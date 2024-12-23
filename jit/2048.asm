@@ -30,42 +30,58 @@
 ;--------------------------------------------------------------------------
 
 MAIN
-      LD    R6, STACK                     ; load stack pointer
-      LEA   R5, BOARD                     ; load board pointer
+      	LD    R6, STACK                     ; load stack pointer
+	  	; 2c17 Keep a shadow memory to read (PC + 0x17) -> loads 0x4000 into R6
+      	LEA   R5, BOARD                     ; load board pointer
+	  	; EA18 -> loads PC+0x18 (not its content) into R7
+	  	; Note that STACK and BOARD point to global variables so we need to use shadow memory
+	  	; Actually, for all instructions that use PC offset, we should stick to the shadow memory
 
-      LEA   R0, INSTRUCTION_MESSAGE       ; show instructions
-      PUTS
+      	LEA   R0, INSTRUCTION_MESSAGE       ; show instructions
+	  	; E082 -> Same thing, use the shadow memory to figure out the address to load
+      	PUTS
+	  	; F022 -> Easy with shadow memory:
+		; We already know the base of the code in shadow memory
+		; We also know the address of the first 16-bit (PUTS displays the lower 8-bit of each 16-bit)
+		; PUTS stops when it hits 0x00
+		; So this is just a loop with a test at the beginning
 
-      LEA   R0, PROMPT_TYPE_MESSAGE       ; prompt for ANSI terminal
-      JSR   PROMPT
-      BRp   NEW
 
-      STI   R0, CLEAR_STRING_PTR          ; disable ANSI screen clearing
-      LD    R1, BOARD_LABELS_TBL_PTR_PTR  ; disable ANSI colors
-      LD    R2, TEXT_BOARD_LABELS_TBL_PTR
-      STR   R2, R1, #0
+      	LEA   R0, PROMPT_TYPE_MESSAGE       ; prompt for ANSI terminal
+		; E028 -> Use shadow memory, fetch PC+offset and load
+      	JSR   PROMPT
+		; 4A7D -> JSR (offset mode)
+		; Since this is a jump, do I need to slice the basic block here?
+		; OK let's forget about basic blocks for now, just a fetch->translate->execute loop
 
-NEW   JSR   RESET_BOARD                   ; reset the board
-LOOP  JSR   DISPLAY_BOARD                 ; display the board
-      JSR   GET_KEY                       ; wait for for a move
+      	BRp   NEW
 
-      LD    R0, DEAD                      ; check if user is dead
-      BRp   IS_DEAD
-      BRnzp LOOP
+      	STI   R0, CLEAR_STRING_PTR          ; disable ANSI screen clearing
+      	LD    R1, BOARD_LABELS_TBL_PTR_PTR  ; disable ANSI colors
+      	LD    R2, TEXT_BOARD_LABELS_TBL_PTR
+      	STR   R2, R1, #0
+
+NEW   	JSR   RESET_BOARD                   ; reset the board
+LOOP  	JSR   DISPLAY_BOARD                 ; display the board
+      	JSR   GET_KEY                       ; wait for for a move
+
+      	LD    R0, DEAD                      ; check if user is dead
+      	BRp   IS_DEAD
+      	BRnzp LOOP
 
 IS_DEAD
-      JSR   DISPLAY_BOARD                 ; display the board a final time
-      LEA   R0, DEATH_MESSAGE             ; display the death message
-      PUTS
-      LEA   R0, PROMPT_DEATH_MESSAGE      ; prompt for a new game
-      JSR   PROMPT
-      BRp   NEW
-      HALT
+      	JSR   DISPLAY_BOARD                 ; display the board a final time
+      	LEA   R0, DEATH_MESSAGE             ; display the death message
+      	PUTS
+      	LEA   R0, PROMPT_DEATH_MESSAGE      ; prompt for a new game
+      	JSR   PROMPT
+      	BRp   NEW
+      	HALT
 
 ; global data
-      STACK       .FILL x4000
-;     GAME_STATE
-            DEAD  .FILL x00
+      	STACK       .FILL x4000
+;     	GAME_STATE
+			DEAD  .FILL x00
             BOARD .FILL x01         ; creates an initial game state that
                   .FILL x07         ; can be used to debug game logic
                   .FILL x08
@@ -83,14 +99,14 @@ IS_DEAD
                   .FILL x0B
                   .FILL x0C
 
-      CLEAR_STRING_PTR             .FILL       CLEAR_STRING
-      BOARD_LABELS_TBL_PTR_PTR     .FILL       BOARD_LABELS_TBL_PTR
-      TEXT_BOARD_LABELS_TBL_PTR    .FILL       TEXT_BOARD_LABELS_TBL
+		CLEAR_STRING_PTR             .FILL       CLEAR_STRING
+		BOARD_LABELS_TBL_PTR_PTR     .FILL       BOARD_LABELS_TBL_PTR
+		TEXT_BOARD_LABELS_TBL_PTR    .FILL       TEXT_BOARD_LABELS_TBL
 
-      PROMPT_TYPE_MESSAGE     .STRINGZ    "Are you on an ANSI terminal (y/n)? "
-      PROMPT_DEATH_MESSAGE    .STRINGZ    "Would you like to play again (y/n)? "
-      DEATH_MESSAGE           .STRINGZ    "\nYou lost :(\n\n"
-      INSTRUCTION_MESSAGE     .STRINGZ    "Control the game using WASD keys.\n"
+		PROMPT_TYPE_MESSAGE     .STRINGZ    "Are you on an ANSI terminal (y/n)? "
+		PROMPT_DEATH_MESSAGE    .STRINGZ    "Would you like to play again (y/n)? "
+		DEATH_MESSAGE           .STRINGZ    "\nYou lost :(\n\n"
+		INSTRUCTION_MESSAGE     .STRINGZ    "Control the game using WASD keys.\n"
 
 ;--------------------------------------------------------------------------
 ; RESET_BOARD

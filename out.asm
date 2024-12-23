@@ -1,4 +1,4 @@
-00000000  EB20              jmp short 0x22
+00000000  EB20              jmp short 0x20
 00000002  4831C0            xor rax,rax
 00000005  4831FF            xor rdi,rdi
 00000008  4831F6            xor rsi,rsi
