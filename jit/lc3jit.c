@@ -25,7 +25,7 @@ enum
 };
 
 uint16_t lc3pc = 0;
-uint16_t shadowMemory[65536];
+uint16_t shadowMemory[65536] = {0};
 
 /*
 For ChatGPT:
@@ -46,6 +46,7 @@ uint16_t sign_extended(uint16_t num, uint8_t effBits);
 void execute_generated_machine_code(const uint8_t *code, size_t codelen);
 
 void emit_ld(const uint16_t* shadowMemory, uint16_t instr);
+void emit_ld_test();
 
 void emit_ld(const uint16_t* shadowMemory, uint16_t instr)
 {
@@ -57,6 +58,7 @@ void emit_ld(const uint16_t* shadowMemory, uint16_t instr)
 		Example binary:	0x2c17
 		-----------------------
 		Translated to something like:
+		xor rcx, rcx
 		mov cx, #value_at_index
 	*/
 
@@ -67,6 +69,23 @@ void emit_ld(const uint16_t* shadowMemory, uint16_t instr)
 		value gives #value_at_index
 	*/
 	uint16_t value = shadowMemory[lc3pc + pcoffset9];
+
+	/* Now we need to figure out how to generate the binary code */
+	// https://www.felixcloutier.com/x86/mov
+	uint8_t x64Code[3]; 
+	x64Code[0] = '\xB9';
+	x64Code[1] = value & 0xFF;
+	x64Code[2] = value >> 8;
+	execute_generated_machine_code(x64Code, 3);
+}
+
+void emit_ld_test()
+{
+	uint8_t x64Code[3]; 
+	x64Code[0] = '\xB9';
+	x64Code[1] = 0x5678 & 0xFF;
+	x64Code[2] = 0x5678 >> 8;
+	execute_generated_machine_code(x64Code, 3);
 }
 
 int main()
@@ -84,7 +103,10 @@ int main()
 	// 40 B7 00            		mov dil,0x0			; rdi <- 0 (error_code)
 	// 0F 05              		syscall
 
-	execute_generated_machine_code(code3, sizeof(code3));
+	// execute_generated_machine_code(code3, sizeof(code3));
+
+	// Expect to see 0x5678 in rcx
+	emit_ld_test();
 
 	return 0;
 
