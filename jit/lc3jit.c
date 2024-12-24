@@ -10,7 +10,64 @@
 #include <string.h>
 
 
+/* Register file mapping */
+enum
+{
+	R_R8 = 0,
+	R_R9,
+	R_R10,
+	R_R11,
+	R_R12,
+	R_R13,
+	R_R14,
+	R_R15,
+	R_COUNT
+};
+
+uint16_t lc3pc = 0;
+uint16_t shadowMemory[65536];
+
+/*
+For ChatGPT:
+
+I have a question about mapping registers when emitting x64 binary code:
+Let's say x64 r8-r15 are mapped to lc3 r0-r7
+And then there is a load instruction: ld r6, stack
+
+Let's focus on mapping lc-3 r6 to x64 r14. 
+This is actually complicated, 
+essentially I need to write a switch statement in assembly and manually translate it to binary. 
+
+This seems pretty bad, is there way to avoid the translation part? 
+*/
+
+
+uint16_t sign_extended(uint16_t num, uint8_t effBits);
 void execute_generated_machine_code(const uint8_t *code, size_t codelen);
+
+void emit_ld(const uint16_t* shadowMemory, uint16_t instr);
+
+void emit_ld(const uint16_t* shadowMemory, uint16_t instr)
+{
+	/* 	For reason of passing shadowMemory as an argument, see comments in 2048.asm
+		shadowMemory -> rdi, instr -> rsi
+	 	Example: 		LD    R6, STACK
+		LC-3 binary:	15 14 13 12 | 11 10 9 | 8 7 6 5 4 3 2 1 0
+						0  0  1  0  |   DR    |    PCOffset9
+		Example binary:	0x2c17
+		-----------------------
+		Translated to something like:
+		mov cx, #value_at_index
+	*/
+
+	uint8_t dr = (instr >> 9) & 0x0007;
+	uint16_t pcoffset9 = sign_extended(instr & 0x01FF, 9);
+
+	/* 	dr tells which mapped x64 register to store,
+		value gives #value_at_index
+	*/
+	uint16_t value = shadowMemory[lc3pc + pcoffset9];
+}
 
 int main()
 {
@@ -90,4 +147,25 @@ void execute_generated_machine_code(const uint8_t *code, size_t codelen)
     (*(void (*)()) executable_area)();
 
     munmap(executable_area, rounded_codesize);
+}
+
+uint16_t sign_extended(uint16_t num, uint8_t effBits)
+{
+	// Sign extend num that contains effBits of bits to a full 16-bit unsigned short
+	// uint16_t is good even for negative numbers because of overflow ->
+	// consider 0x3000 + 0xFFFF in 16-bit, this results in 0x2FFF which is what we want
+
+	// check whether the top effective bit is 1
+	if ((num >> (effBits - 1)) & 0x0001)
+	{
+		// e.g. 0x003F with 6 effective bits would be a negative number,
+		// we left shift 0xFFFF to make the last 6 bits 0 so the 3F part doesn't get impacted
+		// then sign extend the rest as 1, results in 0xFFFF
+		// If 0x003F has 7 effective bits, then it's a positive number and nothing needs to be done
+		return (num | (0xFFFF << effBits));
+	}
+	else
+	{
+		return num;
+	}
 }

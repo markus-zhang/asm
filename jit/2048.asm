@@ -29,9 +29,21 @@
 ; Initializes program
 ;--------------------------------------------------------------------------
 
+
+;--------------------------------------------------------------------------
+; TRANSLATION RULES
+; - R0-R7 maps to x64 R8-R15
+; - Every translation function must pass the pointer ot the shadow memory
+;--------------------------------------------------------------------------
+
 MAIN
       	LD    R6, STACK                     ; load stack pointer
 	  	; 2c17 Keep a shadow memory to read (PC + 0x17) -> loads 0x4000 into R6
+		; Tranlsation:
+		; *. Address of shadow memory is past as first argument and saved in rdi ->
+		; 1. Locate in shadow memory PC+0x17 ->
+		; 2. Load two bytes of [rdi+PC+0x17] into x64 R14 (which maps to LC-3's R6)
+		
       	LEA   R5, BOARD                     ; load board pointer
 	  	; EA18 -> loads PC+0x18 (not its content) into R7
 	  	; Note that STACK and BOARD point to global variables so we need to use shadow memory
