@@ -72,11 +72,21 @@ void emit_ld(const uint16_t* shadowMemory, uint16_t instr)
 
 	/* Now we need to figure out how to generate the binary code */
 	// https://www.felixcloutier.com/x86/mov
-	uint8_t x64Code[3]; 
-	x64Code[0] = '\xB9';
-	x64Code[1] = value & 0xFF;
-	x64Code[2] = value >> 8;
-	execute_generated_machine_code(x64Code, 3);
+	uint8_t x64Code[7]; 
+
+	// xor rcx, rcx
+	// TODO: How to use dr to define arbitrary register? Need to research
+	x64Code[0] = '\x48';
+	x64Code[1] = '\x31';
+	x64Code[2] = '\xc9';	// db for rbx
+
+	// mov cx, num
+	// TODO: use dr to define arbitrary register
+	x64Code[3] = '\x66';
+	x64Code[4] = '\xB9';	// bb for rbx
+	x64Code[5] = value & 0xFF;
+	x64Code[6] = value >> 8;
+	execute_generated_machine_code(x64Code, 7);
 }
 
 void emit_ld_test()

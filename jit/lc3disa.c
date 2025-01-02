@@ -5,10 +5,9 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <signal.h>
+#include "lc3disa.h"
 #include <stdlib.h>
 #include <unistd.h>
-
-#define DEBUG_LEVEL 1
 
 void dis_br(uint16_t instr)
 {
@@ -67,8 +66,9 @@ void dis_and(uint16_t instr)
 
 	putchar('\t');
 
-	uint8_t dr = 
-
+	uint8_t dr = (instr >> 9) & 0x0007;
+	uint8_t sr = (instr >> 6) & 0x0007;
+	
 	
 	printf("%#06x\n", (instr & 0x01FF));
 }

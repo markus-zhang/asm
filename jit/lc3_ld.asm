@@ -1,2 +1,2 @@
-xor rcx, rcx
-mov cx, 0x5678
+xor rbx, rbx
+mov ax, 0x5678
