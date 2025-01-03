@@ -21,5 +21,11 @@ void dis_str(uint16_t instr, uint16_t address);
 void dis_rti(uint16_t instr, uint16_t address);
 void dis_not(uint16_t instr, uint16_t address);
 void dis_ldi(uint16_t instr, uint16_t address);
+void dis_sti(uint16_t instr, uint16_t address);
+void dis_jmp(uint16_t instr, uint16_t address);
+void dis_rsv(uint16_t instr, uint16_t address);
+void dis_lea(uint16_t instr, uint16_t address);
+void dis_trap(uint16_t instr, uint16_t address);
+
 
 #endif

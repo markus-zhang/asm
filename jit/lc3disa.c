@@ -245,7 +245,7 @@ void dis_ldi(uint16_t instr, uint16_t address)
 	*/
 	dis_debug(instr, address);
 
-	printf("NOT");
+	printf("LDI");
 
 	putchar('\t');
 
@@ -253,6 +253,117 @@ void dis_ldi(uint16_t instr, uint16_t address)
 	printf("r%hhu\t", dr);
 
 	printf("%#06x\n", sign_extended(instr & 0x01FF, 9));
+}
+
+void dis_sti(uint16_t instr, uint16_t address)
+{
+	/* 
+		15 14 13 12 | 11 10 9 | 8 7 6 5 4 3 2 1 0
+		1  0  1  1  |   SR    |     PCoffset9
+	*/
+	dis_debug(instr, address);
+
+	printf("STI");
+
+	putchar('\t');
+
+	uint8_t sr = (instr >> 9) & 0x0007;
+	printf("r%hhu\t", sr);
+
+	printf("%#06x\n", sign_extended(instr & 0x01FF, 9));
+}
+
+void dis_jmp(uint16_t instr, uint16_t address)
+{
+	/*  JMP
+		15 14 13 12 | 11 10 9 | 8 7 6 | 5 4 3 2 1 0
+		1  1  0  0  | 0  0  0 | BaseR | 0 0 0 0 0 0
+		-------------------or----------------------
+		RET
+		15 14 13 12 | 11 10 9 | 8 7 6 | 5 4 3 2 1 0
+		1  1  0  0  | 0  0  0 | 1 1 1 | 0 0 0 0 0 0
+	*/
+	dis_debug(instr, address);
+
+	/* This instruction is a bit special, could be RET if BaseR is R7 */
+	uint8_t br = (instr >> 6) & 0x0007;
+
+	if (br == 7)
+	{
+		/* RET */
+		printf("RET\n");
+	}
+	else 
+	{
+		/* JMP */
+		printf("JMP");
+		putchar('\t');
+
+		uint8_t sr = (instr >> 6) & 0x0007;
+		printf("r%hhu\n", sr);
+	}
+}
+
+void dis_rsv(uint16_t instr, uint16_t address)
+{
+	/* Reserved */
+	/* 
+		15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0
+		1  1  0  1  x  x  x x x x x x x x x x
+	*/
+	printf("Reserved: %#06x\n", instr);
+}
+
+void dis_lea(uint16_t instr, uint16_t address)
+{
+	/*
+		15 14 13 12 | 11 10 9 | 8 7 6 5 4 3 2 1 0
+		1  1  1  0  |    dr   |     PCoffset9
+	*/
+	dis_debug(instr, address);
+
+	printf("LEA");
+
+	putchar('\t');
+
+	uint8_t dr = (instr >> 9) & 0x0007;
+	printf("r%hhu\t", dr);
+
+	printf("%#06x\n", sign_extended(instr & 0x01FF, 9));
+}
+
+void dis_trap(uint16_t instr, uint16_t address)
+{
+	/*
+		15 14 13 12 | 11 10 9 8 | 7 6 5 4 3 2 1 0
+		1  1  1  1  | 0  0  0 0 |    trapvect8
+	*/
+	dis_debug(instr, address);
+	
+	uint8_t trapvect8 = instr & 0x00FF;
+	switch (trapvect8)
+	{
+		case 0x20:
+			printf("GETC\n");
+			break;
+		case 0x21:
+			printf("OUT\n");
+			break;
+		case 0x22:
+			printf("PUTS\n");
+			break;
+		case 0x23:
+			printf("IN\n");
+			break;
+		case 0x24:
+			printf("PUTSP\n");
+			break;
+		case 0x25:
+			printf("HALT\n");
+			break;
+		default:
+			printf("Erroneous TRAP vector!\n");
+	}
 }
 
 
