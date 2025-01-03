@@ -7,7 +7,7 @@ int main()
 	// ADD 	R1, R7, R4
 	dis_add(0x13e4, 0x3012);
 
-	// Add 	R1, R7, 0x11c
+	// Add 	R1, R7, #0x11c
 	dis_add(0x13fc, 0x3014);
 
 
@@ -19,10 +19,13 @@ int main()
 	// AND	R1, R7, R4
 	dis_and(0x53e4, 0x3024);
 
-	// AND 	R1, R7, 0x11c
+	// AND 	R1, R7, #0x11c
 	dis_and(0x53fc, 0x3026);
 
-	// LDR	R2, R4, 0x0f
+	// LDR	R2, R4, #0x0f
 	dis_ldr(0x650f, 0x3028);
+
+	// STR	R4, R2, #5
+	dis_str(0x7885, 0x3030);
 	return 0;
 }
