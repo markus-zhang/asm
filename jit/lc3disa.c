@@ -209,6 +209,53 @@ void dis_str(uint16_t instr, uint16_t address)
 	printf("%#06x\n", sign_extended(instr & 0x003F, 6));
 }
 
+void dis_rti(uint16_t instr, uint16_t address)
+{
+	/* Not used */
+	/* 
+		15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0
+		1  0  0  0  0  0  0 0 0 0 0 0 0 0 0 0
+	*/
+	printf("RTI not used: %#06x\n", instr);
+}
+
+void dis_not(uint16_t instr, uint16_t address)
+{
+	/* 
+		15 14 13 12 | 11 10 9 | 8 7 6 | 5 | 4 3 2 1 0
+		1  0  0  1  |   DR    |   SR  | 1 | 1 1 1 1 1
+	*/
+	dis_debug(instr, address);
+
+	printf("NOT");
+
+	putchar('\t');
+
+	uint8_t sr = (instr >> 9) & 0x0007;
+	printf("r%hhu\t", sr);
+	uint8_t br = (instr >> 6) & 0x0007;
+	printf("r%hhu\n", br);
+}
+
+void dis_ldi(uint16_t instr, uint16_t address)
+{
+	/* 
+		15 14 13 12 | 11 10 9 | 8 7 6 5 4 3 2 1 0
+		1  0  1  0  |   DR    |    PCoffset9
+	*/
+	dis_debug(instr, address);
+
+	printf("NOT");
+
+	putchar('\t');
+
+	uint8_t dr = (instr >> 9) & 0x0007;
+	printf("r%hhu\t", dr);
+
+	printf("%#06x\n", sign_extended(instr & 0x01FF, 9));
+}
+
+
 
 void dis_debug(uint16_t instr, uint16_t address)
 {
