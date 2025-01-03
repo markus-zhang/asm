@@ -3,10 +3,13 @@
 
 #include <stdlib.h>
 #include <unistd.h>
+#include <stdint.h>
 
-#define DEBUG_LEVEL 1
+#define DEBUG_LEVEL 2
 
-void dis_br(uint16_t instr);
-void dis_and(uint16_t instr);
+uint16_t sign_extended(uint16_t num, uint8_t effBits);
+
+void dis_br(uint16_t instr, uint16_t address);
+void dis_and(uint16_t instr, uint16_t address);
 
 #endif
