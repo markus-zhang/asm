@@ -16,5 +16,6 @@ void dis_ld(uint16_t instr, uint16_t address);
 void dis_st(uint16_t instr, uint16_t address);
 void dis_jsr(uint16_t instr, uint16_t address);
 void dis_and(uint16_t instr, uint16_t address);
+void dis_ldr(uint16_t instr, uint16_t address);
 
 #endif

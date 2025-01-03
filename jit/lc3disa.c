@@ -168,6 +168,27 @@ void dis_and(uint16_t instr, uint16_t address)
 	}
 }
 
+void dis_ldr(uint16_t instr, uint16_t address)
+{
+	/* 
+		15 14 13 12 | 11 10 9 | 8 7 6 | 5 4 3 2 1 0
+		0  1  1  0  |   DR    | BaseR |   offset6
+	*/
+
+	dis_debug(instr, address);
+
+	printf("LDR");
+
+	putchar('\t');
+
+	uint8_t dr = (instr >> 9) & 0x0007;
+	printf("r%hhu\t", dr);
+	uint8_t sr = (instr >> 6) & 0x0007;
+	printf("r%hhu\t", sr);
+
+	printf("%#06x\n", sign_extended(instr & 0x003F, 6));
+}
+
 
 
 void dis_debug(uint16_t instr, uint16_t address)

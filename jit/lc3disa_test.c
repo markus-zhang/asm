@@ -22,6 +22,7 @@ int main()
 	// AND 	R1, R7, 0x11c
 	dis_and(0x53fc, 0x3026);
 
-	// 
+	// LDR	R2, R4, 0x0f
+	dis_ldr(0x650f, 0x3028);
 	return 0;
 }
