@@ -339,7 +339,7 @@ void dis_trap(uint16_t instr, uint16_t address)
 		1  1  1  1  | 0  0  0 0 |    trapvect8
 	*/
 	dis_debug(instr, address);
-	
+
 	uint8_t trapvect8 = instr & 0x00FF;
 	switch (trapvect8)
 	{

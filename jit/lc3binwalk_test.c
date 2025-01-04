@@ -41,13 +41,12 @@ void (*disa_call_table[])(uint16_t, uint16_t) = {
 
 /* Functions Declaration BEGIN */
 
-uint16_t sign_extended(uint16_t num, uint8_t effBits);
+uint16_t swap16(uint16_t value);
+void write_memory(uint16_t index, uint16_t value);
 void read_image(FILE* fp, uint16_t* arrayBase, uint16_t* arraySize);
 
 int main()
 {
-	setup();
-
 	reg[R_COND] = FL_ZRO;
 
 	reg[R_PC] = 0x3000;
@@ -63,39 +62,19 @@ int main()
 
 	/* Start testing */
 	struct block* b = (struct block*)malloc(sizeof(struct block));
-	int currentPC = load_block(b, binary, numInstr, 0, 0x3000);
+	// Note that memory has the correct endian while binary is raw
+	int instrCopied = load_block(b, memory, numInstr, 0x3000, 0x3000);
 
-	for (int i = 0; i < currentPC - 1; i++)
+	for (int i = 0; i < instrCopied; i++)
 	{
-
+		currentInstr = b->lc3Code[i];
+		uint16_t op = currentInstr >> 12;
+		disa_call_table[op](currentInstr, 0x3000 + i * 2);
 	}
 
 	return 0;
 }
 
-
-
-
-uint16_t sign_extended(uint16_t num, uint8_t effBits)
-{
-	// Sign extend num that contains effBits of bits to a full 16-bit unsigned short
-	// uint16_t is good even for negative numbers because of overflow ->
-	// consider 0x3000 + 0xFFFF in 16-bit, this results in 0x2FFF which is what we want
-
-	// check whether the top effective bit is 1
-	if ((num >> (effBits - 1)) & 0x0001)
-	{
-		// e.g. 0x003F with 6 effective bits would be a negative number,
-		// we left shift 0xFFFF to make the last 6 bits 0 so the 3F part doesn't get impacted
-		// then sign extend the rest as 1, results in 0xFFFF
-		// If 0x003F has 7 effective bits, then it's a positive number and nothing needs to be done
-		return (num | (0xFFFF << effBits));
-	}
-	else
-	{
-		return num;
-	}
-}
 
 void read_image(FILE* fp, uint16_t* arrayBase, uint16_t* arraySize)
 {
@@ -127,4 +106,16 @@ void read_image(FILE* fp, uint16_t* arrayBase, uint16_t* arraySize)
 	// the proper way is to do 2 fread(), the first fread() gets the org
 	// and then the second fread() gets the code, and PC = 0x3000 instead of 0x3001
 	reg[R_PC] = org;
+}
+
+uint16_t swap16(uint16_t value)
+{
+	// For translating endianness
+	uint16_t result = ((value >> 8) & 0x00FF) + ((value << 8) & 0xFF00);
+	return result;
+}
+
+void write_memory(uint16_t index, uint16_t value)
+{
+	memory[index] = value;
 }

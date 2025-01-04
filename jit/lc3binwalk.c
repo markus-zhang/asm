@@ -16,12 +16,20 @@
 	index 	-> index into binary;
 	address -> lc-3 vm address in shadow memory
 */
-uint16_t load_block(struct block* b, uint16_t* binary, uint16_t numInstr, uint16_t index, uint16_t address)
+int load_block(struct block* b, uint16_t* binary, uint16_t numInstr, uint16_t index, uint16_t address)
 {
 	uint16_t indexBegin = index;
-	while (index < numInstr)
+	int instrCopied = 0;
+
+	while (numInstr-- > 0)
 	{
-		write_16bit(b->lc3Code, 0, binary[index]);
+		if (BINWALK_DEBUG)
+		{
+			printf("instruction: %#06x\n", binary[index]);
+		}
+
+		write_16bit(b->lc3Code, index - indexBegin, binary[index]);
+		instrCopied++;
 
 		if (is_branch(get_opcode(binary[index])))
 		{
@@ -29,7 +37,7 @@ uint16_t load_block(struct block* b, uint16_t* binary, uint16_t numInstr, uint16
 		}
 		index++;
 	}
-	return index;
+	return instrCopied;
 }
 
 /* 

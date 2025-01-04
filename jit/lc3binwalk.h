@@ -19,7 +19,7 @@ typedef struct block
 	uint8_t x64Code[X64_BLOCK_SIZE];
 } block;
 
-uint16_t load_block(struct block* b, uint16_t* binary, uint16_t numInstr, uint16_t index, uint16_t address);
+int load_block(struct block* b, uint16_t* binary, uint16_t numInstr, uint16_t index, uint16_t address);
 
 void optimize();
 
