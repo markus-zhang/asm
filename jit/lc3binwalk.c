@@ -9,21 +9,6 @@
 
 #include "lc3binwalk.h"
 
-/* if STEP then pause after generating each basic block */
-#define STEP 1
-/* lc-3 block size is capped at 256 instructions (512 bytes) */
-#define LC3_BLOCK_SIZE 256
-/* x64 block size is capped at 4,092 bytes */
-#define X64_BLOCK_SIZE 4092
-
-typedef struct block
-{
-	/* address should not live in block, this is just for testing */
-	uint16_t address;
-	uint16_t lc3Code[LC3_BLOCK_SIZE];
-	uint8_t x64Code[X64_BLOCK_SIZE];
-} block;
-
 /*
 	load_block() loads a block of lc3 code into a block struct.
 	It is supposed to translate it to x64 binary too, but that's not a priority.
