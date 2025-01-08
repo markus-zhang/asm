@@ -1,4 +1,4 @@
-#include "lc3binwalk.h"
+#include "lc3vmcache.h"
 #include <stdio.h>
 #include <stdint.h>
 #include <signal.h>
@@ -63,6 +63,9 @@ void trap_0x22();
 void trap_0x23();
 void trap_0x24();
 void trap_0x25();
+
+// interpreter run function
+void interpreter_run();
 
 
 /* Function declarations END ----------------------------------*/
@@ -134,14 +137,28 @@ int main()
 			Modifications needed for dynarec:
 			# when read_memory(), we need to know the address, which is reg[R_PC];
 			# we need to check code cache to see whether we have a mapped cache
-				# codeCache should be an array of (lc-3 address -> pointer to individual code cache)
-			# if found, we run the code -- right now, just interpret the code in the cache block, because I don't know how to generate x64 native code, so this actually reduces productivity, but hopefully in the future it can directly execute x64 native code
-			# if not found, we create a cache and add it into the cache array codeCache
+				-> codeCache should be an array of (lc-3 address -> pointer to individual code cache)
+			# if found, we use the interpreter to run the code -- 1) I don't know how to generate x64 machine code and map them to LC-3 machine code
+				-> Basically just run the code from the cache instead of from the memory directly
+				-> Once the program hits a jmp/jsr/ret that's the end of the cache, it then call the interpreter to search for the relevant code cache
+					-> Does this mean the interpreter loop should be a function that can be called easily? If it's a while loop, how do I go "back" to it?
+
+			# if not found, we create a cache and add it into the cache array codeCache, then run it
 		*/
-		currentInstr = read_memory(reg[R_PC]++);
 
 		/* check code cache */
+		uint16_t lc3Adress = reg[R_PC];
+		uint16_t* cache = cache_find(lc3Adress);
 
+		// if cache not found, then build and insert
+		if (cache == NULL)
+		{
+			struct lc3Cache newCache = cache_create_block(memory, lc3Adress);
+			cache_add(newCache);
+		}
+
+		currentInstr = read_memory(reg[R_PC]++);
+		
 
 		uint16_t op = currentInstr >> 12;
 		/* Debug BEGIN */
@@ -681,6 +698,36 @@ void trap_0x25()
 	// Halt execution and print a message on the console.
 	printf("\nSystem HALT\n");
 	running = 0;
+}
+
+void interpreter_run()
+{
+	/*
+		while (running)
+		{
+			uint16_t lc3Adress = reg[R_PC];
+			uint16_t* cache = cache_find(lc3Adress);
+
+			// if cache not found, then build and insert
+			if (cache == NULL)
+			{
+				struct lc3Cache newCache = cache_create_block(memory, lc3Adress);
+				cache_add(newCache);
+				cache_run(codeCache[lc3Address]);
+			}
+
+			interpret instr at reg[R_PC]
+		}
+	*/
+}
+
+void cache_run(struct lc3Cache cache)
+{
+	/*
+		cache_run is different from interpreter_run in the sense
+			-> that we don't use PC to find the next instruction but just run sequentially inside of the cache
+			-> We still need to update the PC for the next interpreter_run() call
+	*/
 }
 
 uint16_t swap16(uint16_t value)

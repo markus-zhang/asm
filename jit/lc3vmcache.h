@@ -17,6 +17,7 @@ struct lc3Cache
 struct lc3Cache cache_create_block(uint16_t* memory, uint16_t lc3Address);
 void cache_clear();
 void cache_add(struct lc3Cache c);
+uint16_t* cache_find(uint16_t address);
 
 /* Utility functions */
 uint8_t get_opcode(uint16_t instr);

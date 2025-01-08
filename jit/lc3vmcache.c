@@ -62,6 +62,18 @@ void cache_add(struct lc3Cache c)
 }
 
 
+uint16_t* cache_find(uint16_t address)
+{
+	for (int i = 0; i < cacheCount; i++)
+	{
+		if (codeCache[i].lc3MemAddress == address)
+		{
+			return codeCache[i].codeBlock;
+		}
+	}
+	return NULL;
+}
+
 
 /* Utility functions */
 
@@ -70,10 +82,10 @@ uint8_t get_opcode(uint16_t instr)
 	return (instr >> 12) & 0x000F;
 }
 
-/* returns 1 if it's a jump or trap, 0 otherwise */
+/* returns 1 if it's a jmp/ret/jsr, 0 otherwise (trap is allowed to stay) */
 int is_branch(uint8_t opcode)
 {
-	return ((opcode == 0x04) || (opcode == 0x0c) || (opcode == 0x0f));
+	return ((opcode == 0x04) || (opcode == 0x0c));
 }
 
 void write_16bit(uint16_t* targetArray, uint16_t targetIndex, uint16_t value)
