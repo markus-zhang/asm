@@ -1,4 +1,11 @@
-.PHONY: test binwalk lc3disa_test lc3binwalk_test
+.PHONY: test binwalk lc3disa_test lc3binwalk_test lc3jit
+
+jit: lc3jit
+	./lc3vm_jit
+
+lc3jit: lc3vm_jit.c
+	rm -f ./lc3vm_jit
+	gcc -g -Wall lc3disa.c lc3vmcache.c lc3vm_jit.c -o lc3vm_jit
 
 test: lc3disa_test
 	./lc3disa_test

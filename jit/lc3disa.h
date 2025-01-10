@@ -7,8 +7,6 @@
 
 #define DEBUG_LEVEL 1
 
-uint16_t sign_extended(uint16_t num, uint8_t effBits);
-
 void dis_debug(uint16_t instr, uint16_t address);
 void dis_br(uint16_t instr, uint16_t address);
 void dis_add(uint16_t instr, uint16_t address);
@@ -26,6 +24,8 @@ void dis_jmp(uint16_t instr, uint16_t address);
 void dis_rsv(uint16_t instr, uint16_t address);
 void dis_lea(uint16_t instr, uint16_t address);
 void dis_trap(uint16_t instr, uint16_t address);
+
+uint16_t sign_extended(uint16_t num, uint8_t effBits);
 
 
 #endif

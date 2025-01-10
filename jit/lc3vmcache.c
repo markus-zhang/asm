@@ -7,9 +7,7 @@
 #include "lc3disa.h"
 #include "lc3vmcache.h"
 
-// tracks the count of codeBlocks
 int cacheCount = 0;
-
 struct lc3Cache codeCache[CACHE_SIZE_MAX];
 
 struct lc3Cache cache_create_block(uint16_t* memory, uint16_t lc3Address)
@@ -39,12 +37,13 @@ struct lc3Cache cache_create_block(uint16_t* memory, uint16_t lc3Address)
 
 void cache_clear()
 {
-	for( ; cacheCount > 0; cacheCount--)
+	for(int i = cacheCount; i > 0; i--)
 	{
-		free(codeCache[cacheCount - 1].codeBlock);
+		free(codeCache[i - 1].codeBlock);
 	}
 
 	// cacheCount should be 0 by now
+	cacheCount = 0;
 }
 
 void cache_add(struct lc3Cache c)
@@ -92,3 +91,4 @@ void write_16bit(uint16_t* targetArray, uint16_t targetIndex, uint16_t value)
 {
 	targetArray[targetIndex] = value;
 }
+

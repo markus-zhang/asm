@@ -1,4 +1,5 @@
 #include "lc3vmcache.h"
+#include "lc3disa.h"
 #include <stdio.h>
 #include <stdint.h>
 #include <signal.h>
@@ -49,7 +50,7 @@ void shutdown();
 void handle_interrupt(int signal);
 void disable_input_buffering();
 void restore_input_buffering();
-uint16_t sign_extended(uint16_t num, uint8_t effBits);
+// uint16_t sign_extended(uint16_t num, uint8_t effBits);
 void update_flag(uint16_t value);
 uint16_t read_memory(uint16_t index);
 void write_memory(uint16_t index, uint16_t value);
@@ -66,7 +67,8 @@ void trap_0x25();
 
 // interpreter run function
 void interpreter_run();
-
+void cache_run(struct lc3Cache cache);
+void cache_dump(int cacheIndex);
 
 /* Function declarations END ----------------------------------*/
 
@@ -111,6 +113,10 @@ void (*instr_call_table[])(uint16_t) = {
 	&rti, &not, &ldi, &sti, &jmp, &res, &lea, &trap
 };
 
+void (*disa_call_table[])(uint16_t, uint16_t) = {
+	&dis_br, &dis_add, &dis_ld, &dis_st, &dis_jsr, &dis_and, &dis_ldr, &dis_str, 
+	&dis_rti, &dis_not, &dis_ldi, &dis_sti, &dis_jmp, &dis_rsv, &dis_lea, &dis_trap
+};
 
 
 int main()
@@ -120,7 +126,7 @@ int main()
 	reg[R_COND] = FL_ZRO;
 
 	reg[R_PC] = 0x3000;
-	uint16_t currentInstr = 0;
+	// uint16_t currentInstr = 0;
 
     binary = (uint16_t*)malloc(MAX_SIZE * sizeof(uint16_t));
     FILE* fp = fopen("./2048.obj", "rb");
@@ -131,55 +137,58 @@ int main()
 	fclose(fp);
 
 	/* Decode and Call */
-	while (running)
-	{
-		/*
-			Modifications needed for dynarec:
-			# when read_memory(), we need to know the address, which is reg[R_PC];
-			# we need to check code cache to see whether we have a mapped cache
-				-> codeCache should be an array of (lc-3 address -> pointer to individual code cache)
-			# if found, we use the interpreter to run the code -- 1) I don't know how to generate x64 machine code and map them to LC-3 machine code
-				-> Basically just run the code from the cache instead of from the memory directly
-				-> Once the program hits a jmp/jsr/ret that's the end of the cache, it then call the interpreter to search for the relevant code cache
-					-> Does this mean the interpreter loop should be a function that can be called easily? If it's a while loop, how do I go "back" to it?
+	/*
+		Modifications needed for dynarec:
+		# when read_memory(), we need to know the address, which is reg[R_PC];
+		# we need to check code cache to see whether we have a mapped cache
+			-> codeCache should be an array of (lc-3 address -> pointer to individual code cache)
+		# if found, we use the interpreter to run the code -- 1) I don't know how to generate x64 machine code and map them to LC-3 machine code
+			-> Basically just run the code from the cache instead of from the memory directly
+			-> Once the program hits a jmp/jsr/ret that's the end of the cache, it then call the interpreter to search for the relevant code cache
+				-> Does this mean the interpreter loop should be a function that can be called easily? If it's a while loop, how do I go "back" to it?
 
-			# if not found, we create a cache and add it into the cache array codeCache, then run it
-		*/
+		# if not found, we create a cache and add it into the cache array codeCache, then run it
+	*/
 
-		/* check code cache */
-		uint16_t lc3Adress = reg[R_PC];
-		uint16_t* cache = cache_find(lc3Adress);
+	// while (running)
+	// {
 
-		// if cache not found, then build and insert
-		if (cache == NULL)
-		{
-			struct lc3Cache newCache = cache_create_block(memory, lc3Adress);
-			cache_add(newCache);
-		}
+	// 	/* check code cache */
+	// 	uint16_t lc3Adress = reg[R_PC];
+	// 	uint16_t* cache = cache_find(lc3Adress);
 
-		currentInstr = read_memory(reg[R_PC]++);
+	// 	// if cache not found, then build and insert
+	// 	if (cache == NULL)
+	// 	{
+	// 		struct lc3Cache newCache = cache_create_block(memory, lc3Adress);
+	// 		cache_add(newCache);
+	// 	}
+
+	// 	currentInstr = read_memory(reg[R_PC]++);
 		
 
-		uint16_t op = currentInstr >> 12;
-		/* Debug BEGIN */
+	// 	uint16_t op = currentInstr >> 12;
+	// 	/* Debug BEGIN */
 
-		if (DEBUG)
-		{
-			// Show current instruction in hex and mnenomics
-			printf("Instruction to be executed - %#06x\n", currentInstr);
-			printf("15 14 13 12 11 10 09 08 07 06 05 04 03 02 01 00\n");
-			for (int i = 15; i >= 0; i--)
-			{
-				printf("%hhu  ", (currentInstr >> i) & 0x01);
-			}
-			printf("\nPress ENTER to execute the instruction.");
-			// Step into instructions
-			getchar();
-		}
+	// 	if (DEBUG)
+	// 	{
+	// 		// Show current instruction in hex and mnenomics
+	// 		printf("Instruction to be executed - %#06x\n", currentInstr);
+	// 		printf("15 14 13 12 11 10 09 08 07 06 05 04 03 02 01 00\n");
+	// 		for (int i = 15; i >= 0; i--)
+	// 		{
+	// 			printf("%hhu  ", (currentInstr >> i) & 0x01);
+	// 		}
+	// 		printf("\nPress ENTER to execute the instruction.");
+	// 		// Step into instructions
+	// 		getchar();
+	// 	}
 
-		/* Debug END   */
-		instr_call_table[op](currentInstr);
-	}
+	// 	/* Debug END   */
+	// 	instr_call_table[op](currentInstr);
+	// }
+
+	interpreter_run();
 
 	shutdown();
     return 0;
@@ -523,6 +532,7 @@ void setup()
 void shutdown()
 {
 	restore_input_buffering();
+	cache_clear();
 }
 
 void handle_interrupt(int signal)
@@ -538,6 +548,11 @@ void disable_input_buffering()
     struct termios new_tio = original_tio;
     new_tio.c_lflag &= ~ICANON & ~ECHO;
     tcsetattr(STDIN_FILENO, TCSANOW, &new_tio);
+
+	// handle crash
+	signal(SIGTERM, restore_input_buffering);
+	signal(SIGSEGV, restore_input_buffering);
+	signal(SIGINT, restore_input_buffering);
 }
 
 void restore_input_buffering()
@@ -545,26 +560,26 @@ void restore_input_buffering()
     tcsetattr(STDIN_FILENO, TCSANOW, &original_tio);
 }
 
-uint16_t sign_extended(uint16_t num, uint8_t effBits)
-{
-	// Sign extend num that contains effBits of bits to a full 16-bit unsigned short
-	// uint16_t is good even for negative numbers because of overflow ->
-	// consider 0x3000 + 0xFFFF in 16-bit, this results in 0x2FFF which is what we want
+// static uint16_t sign_extended(uint16_t num, uint8_t effBits)
+// {
+// 	// Sign extend num that contains effBits of bits to a full 16-bit unsigned short
+// 	// uint16_t is good even for negative numbers because of overflow ->
+// 	// consider 0x3000 + 0xFFFF in 16-bit, this results in 0x2FFF which is what we want
 
-	// check whether the top effective bit is 1
-	if ((num >> (effBits - 1)) & 0x0001)
-	{
-		// e.g. 0x003F with 6 effective bits would be a negative number,
-		// we left shift 0xFFFF to make the last 6 bits 0 so the 3F part doesn't get impacted
-		// then sign extend the rest as 1, results in 0xFFFF
-		// If 0x003F has 7 effective bits, then it's a positive number and nothing needs to be done
-		return (num | (0xFFFF << effBits));
-	}
-	else
-	{
-		return num;
-	}
-}
+// 	// check whether the top effective bit is 1
+// 	if ((num >> (effBits - 1)) & 0x0001)
+// 	{
+// 		// e.g. 0x003F with 6 effective bits would be a negative number,
+// 		// we left shift 0xFFFF to make the last 6 bits 0 so the 3F part doesn't get impacted
+// 		// then sign extend the rest as 1, results in 0xFFFF
+// 		// If 0x003F has 7 effective bits, then it's a positive number and nothing needs to be done
+// 		return (num | (0xFFFF << effBits));
+// 	}
+// 	else
+// 	{
+// 		return num;
+// 	}
+// }
 
 void update_flag(uint16_t value)
 {
@@ -702,23 +717,24 @@ void trap_0x25()
 
 void interpreter_run()
 {
-	/*
-		while (running)
+	while (running)
+	{
+		uint16_t lc3Address = reg[R_PC];
+		uint16_t* cache = cache_find(lc3Address);
+
+		// if cache not found, then build and insert
+		if (cache == NULL)
 		{
-			uint16_t lc3Adress = reg[R_PC];
-			uint16_t* cache = cache_find(lc3Adress);
-
-			// if cache not found, then build and insert
-			if (cache == NULL)
-			{
-				struct lc3Cache newCache = cache_create_block(memory, lc3Adress);
-				cache_add(newCache);
-				cache_run(codeCache[lc3Address]);
-			}
-
-			interpret instr at reg[R_PC]
+			struct lc3Cache newCache = cache_create_block(memory, lc3Address);
+			cache_add(newCache);
+			cache_run(codeCache[lc3Address]);
 		}
-	*/
+		// if found, then execute
+		else
+		{
+			cache_run(codeCache[lc3Address]);
+		}
+	}
 }
 
 void cache_run(struct lc3Cache cache)
@@ -728,6 +744,34 @@ void cache_run(struct lc3Cache cache)
 			-> that we don't use PC to find the next instruction but just run sequentially inside of the cache
 			-> We still need to update the PC for the next interpreter_run() call
 	*/
+	for (int i = 0; i < cache.numInstr; i++)
+	{
+		uint16_t instr = cache.codeBlock[i];	
+		uint16_t op = instr >> 12;
+		/* Call the dispatch fp */
+		instr_call_table[op](instr);
+	}
+}
+
+void cache_dump(int cacheIndex)
+{
+	printf("--------Dumping Cache No. %d BEGIN--------\n", cacheIndex);
+	if (cacheIndex >= cacheCount)
+	{
+		printf("Wrong cache index at: %d\n", cacheIndex);
+	}
+	else
+	{
+		for (int i = 0; i < codeCache[cacheIndex].numInstr; i++)
+		{
+			uint16_t instr = codeCache[cacheIndex].codeBlock[i];	
+			uint16_t op = instr >> 12;
+			/* Call the dispatch fp */
+			disa_call_table[op](instr, 0x3000 + i * 2);
+		}
+	}
+	printf("--------Dumping Cache No. %d END----------\n", cacheIndex);
+	getchar();
 }
 
 uint16_t swap16(uint16_t value)
