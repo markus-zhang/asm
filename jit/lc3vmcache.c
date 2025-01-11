@@ -14,6 +14,10 @@ struct lc3Cache cache_create_block(uint16_t* memory, uint16_t lc3Address)
 {
 	uint16_t lc3MemAddress = lc3Address;
 	uint16_t* codeBlock = (uint16_t*)malloc(sizeof(uint16_t) * CODE_BLOCK_SIZE);
+	if (!codeBlock)
+	{
+		printf("%s at line %d: codeBlock created failure\n", __FILE__, __LINE__);
+	}
 	int numInstr = 0;
 
 	while (1)
@@ -61,16 +65,16 @@ void cache_add(struct lc3Cache c)
 }
 
 
-uint16_t* cache_find(uint16_t address)
+int cache_find(uint16_t address)
 {
 	for (int i = 0; i < cacheCount; i++)
 	{
 		if (codeCache[i].lc3MemAddress == address)
 		{
-			return codeCache[i].codeBlock;
+			return i;
 		}
 	}
-	return NULL;
+	return -1;
 }
 
 

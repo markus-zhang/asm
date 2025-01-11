@@ -720,19 +720,24 @@ void interpreter_run()
 	while (running)
 	{
 		uint16_t lc3Address = reg[R_PC];
-		uint16_t* cache = cache_find(lc3Address);
+		int cacheIndex = cache_find(lc3Address);
 
 		// if cache not found, then build and insert
-		if (cache == NULL)
+		if (cacheIndex == -1)
 		{
 			struct lc3Cache newCache = cache_create_block(memory, lc3Address);
+			int newCacheIndex = cacheCount;
 			cache_add(newCache);
-			cache_run(codeCache[lc3Address]);
+			if (DEBUG == DEBUG_DIS)
+			{
+				cache_dump(newCacheIndex);
+			}
+			cache_run(codeCache[newCacheIndex]);
 		}
 		// if found, then execute
 		else
 		{
-			cache_run(codeCache[lc3Address]);
+			cache_run(codeCache[cacheIndex]);
 		}
 	}
 }
@@ -751,6 +756,7 @@ void cache_run(struct lc3Cache cache)
 		/* Call the dispatch fp */
 		instr_call_table[op](instr);
 	}
+
 }
 
 void cache_dump(int cacheIndex)
@@ -771,6 +777,8 @@ void cache_dump(int cacheIndex)
 		}
 	}
 	printf("--------Dumping Cache No. %d END----------\n", cacheIndex);
+	// Pause for inspection
+	fflush(stdout);
 	getchar();
 }
 

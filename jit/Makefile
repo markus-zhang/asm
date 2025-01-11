@@ -1,7 +1,10 @@
-.PHONY: test binwalk lc3disa_test lc3binwalk_test lc3jit
+.PHONY: test binwalk lc3disa_test lc3binwalk_test lc3jit_debug lc3jit
 
 jit: lc3jit
 	./lc3vm_jit
+
+jit_debug: lc3jit
+	gdb -x lc3jit_gdb_commands.txt --tui ./lc3vm_jit
 
 lc3jit: lc3vm_jit.c
 	rm -f ./lc3vm_jit
