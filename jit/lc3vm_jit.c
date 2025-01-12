@@ -753,6 +753,8 @@ void cache_run(struct lc3Cache cache)
 	{
 		uint16_t instr = cache.codeBlock[i];	
 		uint16_t op = instr >> 12;
+		/* LC-3 PC++ */
+		reg[R_PC] += 1;
 		/* Call the dispatch fp */
 		instr_call_table[op](instr);
 	}

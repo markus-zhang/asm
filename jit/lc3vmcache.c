@@ -85,10 +85,10 @@ uint8_t get_opcode(uint16_t instr)
 	return (instr >> 12) & 0x000F;
 }
 
-/* returns 1 if it's a jmp/ret/jsr, 0 otherwise (trap is allowed to stay) */
+/* returns 1 if it's a br/jmp/ret/jsr, 0 otherwise (trap is allowed to stay) */
 int is_branch(uint8_t opcode)
 {
-	return ((opcode == 0x04) || (opcode == 0x0c));
+	return ((opcode == 0x00) || (opcode == 0x04) || (opcode == 0x0c));
 }
 
 void write_16bit(uint16_t* targetArray, uint16_t targetIndex, uint16_t value)
