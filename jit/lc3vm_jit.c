@@ -21,7 +21,7 @@ enum {
 	DEBUG_DIS
 };
 
-uint8_t DEBUG = DEBUG_DIS;
+uint8_t DEBUG = DEBUG_ON;
 
 /* Function declarations BEGIN --------------------------------*/
 // lc-3 instruction functions
@@ -239,21 +239,21 @@ void br(uint16_t instr)
 		reg[R_PC] += pcoffset9;
 	}
 
-	if (DEBUG == DEBUG_DIS)
-	{
-		printf("BR");
+	// if (DEBUG == DEBUG_DIS)
+	// {
+	// 	printf("BR");
 
-		uint8_t n = (instr >> 11) & 0x0001;
-		uint8_t z = (instr >> 10) & 0x0001;
-		uint8_t p = (instr >> 9) & 0x0001;
+	// 	uint8_t n = (instr >> 11) & 0x0001;
+	// 	uint8_t z = (instr >> 10) & 0x0001;
+	// 	uint8_t p = (instr >> 9) & 0x0001;
 
-		if (n) {putchar('n');}
-		if (z) {putchar('z');}
-		if (p) {putchar('p');}
+	// 	if (n) {putchar('n');}
+	// 	if (z) {putchar('z');}
+	// 	if (p) {putchar('p');}
 
-		putchar('\t');
-		printf("%#06x\n", (instr & 0x01FF));
-	}
+	// 	putchar('\t');
+	// 	printf("%#06x\n", (instr & 0x01FF));
+	// }
 }
 
 void add(uint16_t instr)
@@ -265,10 +265,10 @@ void add(uint16_t instr)
 		15 14 13 12 | 11 10 9 | 8 7 6 | 5 | 4 3 2 1 0
 		0  0  0  1  |   DR    |  SR   | 1 |    IMM
 	*/
-	if (DEBUG == DEBUG_DIS)
-	{
-		printf("ADD\t");
-	}
+	// if (DEBUG == DEBUG_DIS)
+	// {
+	// 	printf("ADD\t");
+	// }
 
 	uint8_t dr = (instr >> 9) & 0x0007;
 	uint8_t sr = (instr >> 6) & 0x0007;
@@ -780,8 +780,8 @@ void cache_dump(int cacheIndex)
 	}
 	printf("--------Dumping Cache No. %d END----------\n", cacheIndex);
 	// Pause for inspection
-	fflush(stdout);
-	getchar();
+	// fflush(stdout);
+	// getchar();
 }
 
 uint16_t swap16(uint16_t value)
