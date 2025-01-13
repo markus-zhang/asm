@@ -1,5 +1,6 @@
 #include "lc3vmcache.h"
 #include "lc3disa.h"
+#include "lc3ui.h"
 #include <stdio.h>
 #include <stdint.h>
 #include <signal.h>
@@ -10,6 +11,9 @@
 #include <sys/types.h>
 #include <sys/termios.h>
 #include <sys/mman.h>
+#include <stdarg.h>
+#include <ncurses.h>
+#include <unistd.h>
 
 // #define DEBUG 0			 // For debugging	
 
@@ -21,7 +25,7 @@ enum {
 	DEBUG_DIS
 };
 
-uint8_t DEBUG = DEBUG_ON;
+uint8_t DEBUG = DEBUG_OFF;
 
 /* Function declarations BEGIN --------------------------------*/
 // lc-3 instruction functions
@@ -68,7 +72,10 @@ void trap_0x25();
 // interpreter run function
 void interpreter_run();
 void cache_run(struct lc3Cache cache);
-void cache_dump(int cacheIndex);
+void cache_dump(int cacheIndex, FILE* dump);
+
+// print everywhere function
+void printToCoordinates(int x, int y, const char *format, ...);
 
 /* Function declarations END ----------------------------------*/
 
@@ -135,58 +142,6 @@ int main()
 	read_image(fp, binary, &numInstr);
 	// read_image_file(fp);
 	fclose(fp);
-
-	/* Decode and Call */
-	/*
-		Modifications needed for dynarec:
-		# when read_memory(), we need to know the address, which is reg[R_PC];
-		# we need to check code cache to see whether we have a mapped cache
-			-> codeCache should be an array of (lc-3 address -> pointer to individual code cache)
-		# if found, we use the interpreter to run the code -- 1) I don't know how to generate x64 machine code and map them to LC-3 machine code
-			-> Basically just run the code from the cache instead of from the memory directly
-			-> Once the program hits a jmp/jsr/ret that's the end of the cache, it then call the interpreter to search for the relevant code cache
-				-> Does this mean the interpreter loop should be a function that can be called easily? If it's a while loop, how do I go "back" to it?
-
-		# if not found, we create a cache and add it into the cache array codeCache, then run it
-	*/
-
-	// while (running)
-	// {
-
-	// 	/* check code cache */
-	// 	uint16_t lc3Adress = reg[R_PC];
-	// 	uint16_t* cache = cache_find(lc3Adress);
-
-	// 	// if cache not found, then build and insert
-	// 	if (cache == NULL)
-	// 	{
-	// 		struct lc3Cache newCache = cache_create_block(memory, lc3Adress);
-	// 		cache_add(newCache);
-	// 	}
-
-	// 	currentInstr = read_memory(reg[R_PC]++);
-		
-
-	// 	uint16_t op = currentInstr >> 12;
-	// 	/* Debug BEGIN */
-
-	// 	if (DEBUG)
-	// 	{
-	// 		// Show current instruction in hex and mnenomics
-	// 		printf("Instruction to be executed - %#06x\n", currentInstr);
-	// 		printf("15 14 13 12 11 10 09 08 07 06 05 04 03 02 01 00\n");
-	// 		for (int i = 15; i >= 0; i--)
-	// 		{
-	// 			printf("%hhu  ", (currentInstr >> i) & 0x01);
-	// 		}
-	// 		printf("\nPress ENTER to execute the instruction.");
-	// 		// Step into instructions
-	// 		getchar();
-	// 	}
-
-	// 	/* Debug END   */
-	// 	instr_call_table[op](currentInstr);
-	// }
 
 	interpreter_run();
 
@@ -526,6 +481,9 @@ void trap(uint16_t instr)
 void setup()
 {
 	signal(SIGINT, handle_interrupt);
+	signal(SIGTERM, handle_interrupt);
+	signal(SIGSEGV, handle_interrupt);
+	signal(SIGKILL, handle_interrupt);
 	disable_input_buffering();
 }
 
@@ -548,11 +506,7 @@ void disable_input_buffering()
     struct termios new_tio = original_tio;
     new_tio.c_lflag &= ~ICANON & ~ECHO;
     tcsetattr(STDIN_FILENO, TCSANOW, &new_tio);
-
-	// handle crash
-	signal(SIGTERM, restore_input_buffering);
-	signal(SIGSEGV, restore_input_buffering);
-	signal(SIGINT, restore_input_buffering);
+	
 }
 
 void restore_input_buffering()
@@ -631,12 +585,15 @@ void trap_0x20()
 	reg[R_R0] = (uint16_t)getchar();
 	reg[R_R0] &= 0x00FF;
 	update_flag(reg[R_R0]);
+	ui_debug_info(reg, 25);
+	fflush(stdout);
 }
 
 void trap_0x21()
 {
 	// Write a character in R0[7:0] to the console display.
 	putc((uint8_t)reg[R_R0], stdout);
+	ui_debug_info(reg, 25);
 	fflush(stdout);
 }
 
@@ -659,6 +616,7 @@ void trap_0x22()
 			putc(ch, stdout);
 		}
 	}
+	ui_debug_info(reg, 25);
 	fflush(stdout);
 }
 
@@ -667,10 +625,12 @@ void trap_0x23()
 	// Print a prompt on the screen and read a single character from the keyboard. 
 	// The character is echoed onto the console monitor, and its ASCII code is copied into R0.
 	// The high eight bits of R0 are cleared.
+	
 	printf("> ");
 	reg[R_R0] = (uint16_t)fgetc(stdin);
 	reg[R_R0] &= 0x00FF;
 	putc((uint8_t)reg[R_R0], stdout);
+	ui_debug_info(reg, 25);
 	fflush(stdout);
 	update_flag(reg[R_R0]);
 }
@@ -703,6 +663,7 @@ void trap_0x24()
 		{
 			putc((uint8_t)(value & 0x00FF), stdout);
 			putc(((uint8_t)(value >> 8)), stdout);
+			ui_debug_info(reg, 25);
 		}
 	}
 	fflush(stdout);
@@ -728,10 +689,13 @@ void interpreter_run()
 			struct lc3Cache newCache = cache_create_block(memory, lc3Address);
 			int newCacheIndex = cacheCount;
 			cache_add(newCache);
+
 			if (DEBUG == DEBUG_DIS)
 			{
-				cache_dump(newCacheIndex);
+				FILE* dump = fopen("cache_dump.txt", "a");
+				cache_dump(newCacheIndex, dump);
 			}
+
 			cache_run(codeCache[newCacheIndex]);
 		}
 		// if found, then execute
@@ -753,20 +717,31 @@ void cache_run(struct lc3Cache cache)
 	{
 		uint16_t instr = cache.codeBlock[i];	
 		uint16_t op = instr >> 12;
+
+		// Debuggin BEGIN
+		ui_debug_info(reg, 25);
+		// usleep(500000);
+		// Debugging END
+
 		/* LC-3 PC++ */
-		reg[R_PC] += 1;
-		/* Call the dispatch fp */
+		reg[R_PC] += 1;	
 		instr_call_table[op](instr);
 	}
 
 }
 
-void cache_dump(int cacheIndex)
+void cache_dump(int cacheIndex, FILE* dump)
 {
-	printf("--------Dumping Cache No. %d BEGIN--------\n", cacheIndex);
+	if (!dump)
+	{
+		printf("DEBUG LEVEL SET TO DIS BUT NO DUMP FILE LOCATED. STOP\n");
+		return;
+	}
+
+	fprintf(dump, "--------Dumping Cache No. %d BEGIN--------\n", cacheIndex);
 	if (cacheIndex >= cacheCount)
 	{
-		printf("Wrong cache index at: %d\n", cacheIndex);
+		fprintf(dump, "Wrong cache index at: %d\n", cacheIndex);
 	}
 	else
 	{
@@ -801,4 +776,15 @@ uint16_t check_key()
     timeout.tv_sec = 0;
     timeout.tv_usec = 0;
     return select(1, &readfds, NULL, NULL, &timeout) != 0;
+}
+
+// https://stackoverflow.com/questions/1670891/how-can-i-print-a-string-to-the-console-at-specific-coordinates-in-c
+void printToCoordinates(int x, int y, const char *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    printf("\033[%d;%dH", x, y);
+    vprintf(format, args);
+    va_end(args);
+    fflush(stdout);
 }
